@@ -33,6 +33,6 @@ The `AuthDemo.ts` deployment module distributes:
 Clone the repository and install the dependencies:
 
 ```bash
-git clone [https://github.com/DarioTroll/ssi-auth.git](https://github.com/DarioTroll/ssi-auth.git)
+git clone https://github.com/DarioTroll/ssi-auth.git
 cd ssi-auth
 npm install
