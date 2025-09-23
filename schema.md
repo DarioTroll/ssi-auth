@@ -475,13 +475,8 @@ npm run deploy:demo                  # Deploy + seed flusso demo via Ignition (r
 
 ---
 
-## Estensioni naturali (per dopo)
+## Estensioni naturali
 - **ZK Proofs**: sostituire la chiamata diretta `hasValidCredential` con una verifica di prova ZK off‑chain + verifica on‑chain (es. tramite verifier contract) per preservare privacy su `subject`/attributi.
 - **ML Anomaly Detection**: log degli eventi + features di comportamento (frequenza richieste, esiti, geolocalizzazione lato applicativo) alimentano un modello out‑of‑band che decide se aprire/negare.
 
 ---
-
-Se vuoi, nel prossimo step aggiungiamo:
-- Test unitari Solidity (per singole funzioni)
-- Test di integrazione TypeScript (viem + vitest) con scenari happy path e edge (scadenze, revoche, subject mismatch).
-
