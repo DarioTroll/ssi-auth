@@ -1,103 +1,105 @@
 ## TEST
 
-**Unit test** per verificare il corretto funzionamento dei contratti Solidity.
+**Unit tests** to verify the correct functioning of the Solidity contracts.
+
+---
 
 ### IssuerManager.t.sol
 
-- **File:** `contracts/IssuerManager.t.sol`
-- **Contratto testato:** `IssuerManager`
+- **File:** `contracts/IssuerManager.t.sol`  
+- **Contract under test:** `IssuerManager`
 
-#### Funzioni testate
+#### Functions tested
 
 - `testInitialOwnerIsDeployer`  
-  Verifica che l’owner iniziale del contratto sia il deployer.
+  Verifies that the initial owner of the contract is the deployer.
 
 - `testOwnerCanTransferOwnership`  
-  Controlla che l’owner possa trasferire la proprietà del contratto.
+  Checks that the owner can transfer ownership of the contract.
 
 - `testNonOwnerCannotTransferOwnership`  
-  Verifica che un non-owner non possa trasferire la proprietà.
+  Verifies that a non-owner cannot transfer ownership.
 
 - `testOwnerCanAddIssuer`  
-  Controlla che solo l’owner possa aggiungere un issuer.
+  Checks that only the owner can add an issuer.
 
 - `testNonOwnerCannotAddIssuer`  
-  Verifica che un non-owner non possa aggiungere issuer.
+  Verifies that a non-owner cannot add an issuer.
 
 - `testOwnerCanRemoveIssuer`  
-  Controlla che solo l’owner possa rimuovere un issuer.
+  Checks that only the owner can remove an issuer.
 
 - `testNonOwnerCannotRemoveIssuer`  
-  Verifica che un non-owner non possa rimuovere issuer.
+  Verifies that a non-owner cannot remove an issuer.
 
 - `testIssuerStateChange`  
-  Verifica che lo stato di un issuer cambi correttamente (aggiunta/rimozione).
+  Verifies that the state of an issuer changes correctly (add/remove).
 
 - `testDoubleAddIssuer`  
-  Controlla che aggiungere lo stesso issuer due volte non causi errori.
+  Checks that adding the same issuer twice does not cause errors.
 
 - `testDoubleRemoveIssuer`  
-  Verifica che rimuovere lo stesso issuer due volte non causi errori.
+  Verifies that removing the same issuer twice does not cause errors.
 
 - `testOnlyIssuerModifier`  
-  Test dimostrativo per il modifier `onlyIssuer`. Serve a verificare che solo gli indirizzi whitelisted possano accedere a funzioni riservate agli issuer.
+  Demonstrates the `onlyIssuer` modifier. Ensures that only whitelisted addresses can access functions reserved for issuers.
 
 ---
 
 ### CredentialRegistry.t.sol
 
-- **File:** `contracts/CredentialRegistry.t.sol`
-- **Contratto testato:** `CredentialRegistry`
+- **File:** `contracts/CredentialRegistry.t.sol`  
+- **Contract under test:** `CredentialRegistry`
 
-#### Funzioni testate
+#### Functions tested
 
 - `testIssueCredential`  
-  Verifica che un issuer autorizzato possa emettere una credenziale e che venga registrata correttamente.
+  Verifies that an authorized issuer can issue a credential and that it is correctly recorded.
 
 - `testCannotIssueCredentialIfNotIssuer`  
-  Verifica che un indirizzo non autorizzato non possa emettere una credenziale (revert).
+  Verifies that an unauthorized address cannot issue a credential (revert).
 
 - `testRevokeCredential`  
-  Verifica che un issuer possa revocare una credenziale e che la validità venga aggiornata.
+  Verifies that an issuer can revoke a credential and that validity is updated.
 
 - `testCannotRevokeCredentialIfNotIssuerOrOwner`  
-  Verifica che solo l’issuer o l’owner possano revocare una credenziale (revert).
+  Verifies that only the issuer or the owner can revoke a credential (revert).
 
 - `testIsValidReturnsFalseForRevoked`  
-  Verifica che una credenziale revocata non sia più valida.
+  Verifies that a revoked credential is no longer valid.
 
 - `testIsValidReturnsFalseForExpired`  
-  Verifica che una credenziale scaduta non sia più valida.
+  Verifies that an expired credential is no longer valid.
 
 - `testListBySubjectSchema`  
-  Verifica che la funzione di lista restituisca tutti gli ID delle credenziali per un soggetto e uno schema.
+  Verifies that the listing function returns all credential IDs for a subject and schema.
 
 ---
 
 ### VerifierAdapter.t.sol
 
-- **File:** `contracts/VerifierAdapter.t.sol`
-- **Contratto testato:** `VerifierAdapter`
+- **File:** `contracts/VerifierAdapter.t.sol`  
+- **Contract under test:** `VerifierAdapter`
 
-#### Funzioni testate
+#### Functions tested
 
 - `testOpenAuthRequest`  
-  Verifica che un verifier possa aprire una richiesta di autenticazione e che i dati siano corretti.
+  Verifies that a verifier can open an authentication request and that the data is correct.
 
 - `testOpenAuthRequestFailsWithZeroTTL`  
-  Verifica che non sia possibile aprire una richiesta con TTL zero (revert).
+  Verifies that it is not possible to open a request with TTL set to zero (revert).
 
 - `testRespondWithValidCredential`  
-  Verifica che un subject con credenziale valida possa rispondere e che la richiesta venga approvata.
+  Verifies that a subject with a valid credential can respond and that the request is approved.
 
 - `testRespondFailsIfNoCredential`  
-  Verifica che la risposta fallisca se il subject non ha una credenziale valida (revert).
+  Verifies that the response fails if the subject does not have a valid credential (revert).
 
 - `testRespondFailsIfWrongSubject`  
-  Verifica che la risposta fallisca se il subject non corrisponde a quello atteso (revert).
+  Verifies that the response fails if the subject does not match the expected one (revert).
 
 - `testDenyRequest`  
-  Verifica che il verifier possa negare manualmente una richiesta.
+  Verifies that the verifier can manually deny a request.
 
 - `testDenyRequestFailsIfNotVerifier`  
-  Verifica che solo il verifier possa negare la richiesta (revert).
+  Verifies that only the verifier can deny the request (revert).

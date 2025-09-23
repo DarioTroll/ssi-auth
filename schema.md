@@ -1,8 +1,8 @@
-# Panoramica
+# Overview
 
-Questo documento contiene **il codice completamente commentato riga per riga** per il flusso Issuer → Holder → Verifier, più un **cheatsheet operativo** (comandi e flusso) e una spiegazione di **cosa accade nella EVM e on‑chain** in ciascun passaggio.
+This document contains the **fully commented code line by line** for the Issuer → Holder → Verifier flow, plus an **operational cheatsheet** (commands and flow) and an explanation of **what happens in the EVM and on-chain** at each step.
 
-Struttura:
+Structure:
 
 ```
 contracts/
@@ -17,64 +17,64 @@ package.json (scripts)
 
 ---
 
-## contracts/IssuerManager.sol (include Ownable)
+## contracts/IssuerManager.sol (includes Ownable)
 
 ```solidity
-// SPDX-License-Identifier: MIT                     // Licenza del file: permette riuso con restrizioni minime
-pragma solidity ^0.8.28;                            // Versione del compilatore: abilita arithmetic checks e features di 0.8.x
+// SPDX-License-Identifier: MIT                     // File license: allows reuse with minimal restrictions
+pragma solidity ^0.8.28;                            // Compiler version: enables arithmetic checks and features of 0.8.x
 
 /**
  * @title Ownable
- * @notice Fornisce un semplice controllo di proprietà per funzioni amministrative.
- * @dev Pattern classico: memorizza l'owner e mette a disposizione un modifier onlyOwner.
+ * @notice Provides simple ownership control for administrative functions.
+ * @dev Classic pattern: stores the owner and provides an onlyOwner modifier.
  */
 contract Ownable {
-    address public owner;                           // Slot di storage con l'indirizzo del proprietario; getter auto-generato
-    event OwnershipTransferred(                     // Evento emesso ad ogni cambio owner (log nel receipt, indicizzato per ricerche)
+    address public owner;                           // Storage slot with the owner's address; auto-generated getter
+    event OwnershipTransferred(                     // Event emitted on every ownership change (log in receipt, indexed for searches)
         address indexed from,
         address indexed to
     );
 
-    constructor() {                                 // Eseguito una sola volta durante il deployment (creazione del bytecode + init)
-        owner = msg.sender;                         // Scrittura in storage: l'account che effettua il deploy diventa owner
-        emit OwnershipTransferred(address(0), msg.sender); // Logga il trasferimento da "null" al nuovo owner; non modifica stato ulteriore
+    constructor() {                                 // Executed once during deployment (bytecode creation + init)
+        owner = msg.sender;                         // Storage write: the account performing the deploy becomes owner
+        emit OwnershipTransferred(address(0), msg.sender); // Logs transfer from "null" to new owner; no further state change
     }
 
-    modifier onlyOwner() {                          // Modifier: espande il corpo della funzione a runtime con un check pre-esecuzione
-        require(msg.sender == owner, "Ownable: not owner"); // Se false → REVERT: annulla lo stato e rimborsa gas residuo
-        _;                                          // Placeholder per il corpo della funzione chiamante
+    modifier onlyOwner() {                          // Modifier: expands the function body at runtime with a pre-execution check
+        require(msg.sender == owner, "Ownable: not owner"); // If false → REVERT: rollback state and refund leftover gas
+        _;                                          // Placeholder for the caller function body
     }
 
-    function transferOwnership(address newOwner)    // API pubblica per cambiare owner
-        external                                     // Visibilità: chiamabile dall'esterno via transazione o da altri contratti
-        onlyOwner                                    // Solo l'attuale owner può trasferire
+    function transferOwnership(address newOwner)    // Public API to change owner
+        external
+        onlyOwner                                   // Only current owner can transfer
     {
-        require(newOwner != address(0), "Ownable: zero addr"); // Difensiva: non si può impostare lo zero address
-        owner = newOwner;                            // Aggiorna storage: costo gas proporzionale (SSTORE)
-        emit OwnershipTransferred(msg.sender, newOwner); // Traccia l'evento nel receipt (non modifica storage)
+        require(newOwner != address(0), "Ownable: zero addr"); // Defensive: cannot set to zero address
+        owner = newOwner;                            // Updates storage: gas cost proportional (SSTORE)
+        emit OwnershipTransferred(msg.sender, newOwner); // Tracks event in receipt (does not change storage)
     }
 }
 
 /**
  * @title IssuerManager
- * @notice Gestisce la whitelist degli emettitori (Issuer) autorizzati a rilasciare credenziali.
- * @dev Eredita Ownable per permettere all'admin di aggiungere/rimuovere Issuer.
+ * @notice Manages the whitelist of Issuers authorized to issue credentials.
+ * @dev Inherits Ownable so that the admin can add/remove Issuers.
  */
 contract IssuerManager is Ownable {
-    mapping(address => bool) public isIssuer;       // Mappa on-chain: addr → true/false; getter auto; lettura O(1)
-    event IssuerSet(address indexed issuer, bool allowed); // Evento per auditability: chi viene abilitato/disabilitato
+    mapping(address => bool) public isIssuer;       // On-chain map: addr → true/false; auto getter; O(1) read
+    event IssuerSet(address indexed issuer, bool allowed); // Event for auditability: who is enabled/disabled
 
-    modifier onlyIssuer(){                          // Modifier per funzioni riservate agli emettitori
-        require(isIssuer[msg.sender], "Issuer: not allowed"); // Se l'addr chiamante non è whitelisted → revert
+    modifier onlyIssuer(){                          // Modifier for functions reserved to issuers
+        require(isIssuer[msg.sender], "Issuer: not allowed"); // If caller not whitelisted → revert
         _;
     }
 
     function setIssuer(address issuer, bool allowed)
         external
-        onlyOwner                                   // Solo l'owner può amministrare la lista
+        onlyOwner                                   // Only the owner can manage the list
     {
-        isIssuer[issuer] = allowed;                 // Scrive nello storage la decisione
-        emit IssuerSet(issuer, allowed);            // Event log (immutabile, indicizzabile)
+        isIssuer[issuer] = allowed;                 // Writes decision to storage
+        emit IssuerSet(issuer, allowed);            // Event log (immutable, indexable)
     }
 }
 ```
@@ -84,34 +84,34 @@ contract IssuerManager is Ownable {
 ## contracts/CredentialRegistry.sol
 
 ```solidity
-// SPDX-License-Identifier: MIT                     // Licenza
-pragma solidity ^0.8.28;                            // Versione compiler
+// SPDX-License-Identifier: MIT                     // License
+pragma solidity ^0.8.28;                            // Compiler version
 
-import "./IssuerManager.sol";                      // Import eredità: include Ownable + IssuerManager
+import "./IssuerManager.sol";                      // Import inheritance: includes Ownable + IssuerManager
 
 /**
  * @title CredentialRegistry
- * @notice Registro on-chain minimale di credenziali emesse da Issuer whitelisted.
- * @dev Eredita IssuerManager: riusa owner e isIssuer + controlli.
+ * @notice Minimal on-chain registry of credentials issued by whitelisted Issuers.
+ * @dev Inherits IssuerManager: reuses owner and isIssuer + controls.
  */
 contract CredentialRegistry is IssuerManager {
-    struct Credential {                             // Struttura persistente in storage per ogni credenziale
-        uint256 id;                                 // Identificatore interno (chiave logica)
-        address issuer;                             // Chi ha emesso (auditing, permessi revoke)
-        address subject;                            // Holder (soggetto) a cui la credenziale si riferisce
-        bytes32 schemaId;                           // ID dello schema (es. hash del tipo di VC)
-        uint64 issuedAt;                            // Timestamp di emissione (secondi UNIX)
-        uint64 expiresAt;                           // Scadenza 0=nessuna scadenza
-        bool revoked;                               // Flag di revoca
+    struct Credential {                             // Persistent storage structure for each credential
+        uint256 id;                                 // Internal identifier (logical key)
+        address issuer;                             // Who issued (auditing, revoke permissions)
+        address subject;                            // Holder (subject) to whom credential refers
+        bytes32 schemaId;                           // Schema ID (e.g., hash of VC type)
+        uint64 issuedAt;                            // Issuance timestamp (UNIX seconds)
+        uint64 expiresAt;                           // Expiration 0=none
+        bool revoked;                               // Revocation flag
     }
 
-    uint256 public nextId = 1;                      // Contatore auto-increment per assegnare ID (slot in storage)
-    mapping(uint256 => Credential) public credentials; // Mappa id → struct Credential (lettura via getter)
+    uint256 public nextId = 1;                      // Auto-increment counter for IDs (storage slot)
+    mapping(uint256 => Credential) public credentials; // Map id → struct Credential (getter read)
 
-    // Indice secondario: soggetto + schema → lista di ID (per query efficienti senza scansione globale)
+    // Secondary index: subject + schema → list of IDs (efficient queries without global scan)
     mapping(address => mapping(bytes32 => uint256[])) private _bySubjectSchema;
 
-    event CredentialIssued(                         // Evento su rilascio (per UI indicizzate, indicizzazione per issuer/subject/schema)
+    event CredentialIssued(                         // Event on issuance (for UIs, indexed by issuer/subject/schema)
         uint256 indexed id,
         address indexed issuer,
         address indexed subject,
@@ -120,34 +120,34 @@ contract CredentialRegistry is IssuerManager {
         uint64 expiresAt
     );
 
-    event CredentialRevoked(uint256 indexed id, address indexed by); // Evento su revoca
+    event CredentialRevoked(uint256 indexed id, address indexed by); // Event on revocation
 
     /**
-     * @notice Emette una nuova credenziale per un soggetto.
-     * @dev Solo Issuer abilitati. Scrive storage + emette evento.
+     * @notice Issues a new credential for a subject.
+     * @dev Only authorized Issuers. Writes storage + emits event.
      */
     function issueCredential(
-        address subject,                            // Holder target
-        bytes32 schemaId,                           // Tipo credenziale (hash schema)
-        uint64 expiresAt                            // Scadenza opzionale (0 = nessuna)
+        address subject,                            // Target Holder
+        bytes32 schemaId,                           // Credential type (schema hash)
+        uint64 expiresAt                            // Optional expiration (0 = none)
     )
         external
-        onlyIssuer                                  // Gate: solo msg.sender whitelisted in IssuerManager
-        returns (uint256 id)                        // Ritorna l'id appena creato
+        onlyIssuer
+        returns (uint256 id)                        // Returns new id
     {
-        require(subject != address(0), "subject=0"); // Validazione input difensiva
-        id = nextId++;                              // Legge, incrementa e scrive il contatore (due SLOAD/SSTORE)
-        credentials[id] = Credential({              // Scrive la struct completa nello storage
+        require(subject != address(0), "subject=0"); // Defensive validation
+        id = nextId++;                              // Read, increment and write counter (two SLOAD/SSTORE)
+        credentials[id] = Credential({              // Write full struct in storage
             id: id,
-            issuer: msg.sender,                     // Issuer è il chiamante
-            subject: subject,                       // Soggetto titolare
-            schemaId: schemaId,                     // Schema/type
-            issuedAt: uint64(block.timestamp),      // Timestamp corrente dal contesto EVM
-            expiresAt: expiresAt,                   // Scadenza come passato
-            revoked: false                          // Appena emessa → non revocata
+            issuer: msg.sender,
+            subject: subject,
+            schemaId: schemaId,
+            issuedAt: uint64(block.timestamp),
+            expiresAt: expiresAt,
+            revoked: false
         });
-        _bySubjectSchema[subject][schemaId].push(id); // Aggiorna indice secondario (array dinamico on-chain)
-        emit CredentialIssued(                      // Log (non modifica storage) con dati essenziali
+        _bySubjectSchema[subject][schemaId].push(id); // Update secondary index (dynamic on-chain array)
+        emit CredentialIssued(
             id,
             msg.sender,
             subject,
@@ -158,63 +158,56 @@ contract CredentialRegistry is IssuerManager {
     }
 
     /**
-     * @notice Revoca una credenziale esistente.
-     * @dev Consentito all'Issuer originale o all'owner (admin); setta flag e logga.
+     * @notice Revokes an existing credential.
+     * @dev Allowed to original Issuer or owner; sets flag and logs.
      */
     function revokeCredential(uint256 id) external {
-        Credential storage c = credentials[id];     // Ottiene un riferimento alla struct in storage
-        require(c.id != 0, "not found");          // Se id non esiste → revert
-        require(                                    // Controllo autorizzazione: solo issuer o owner
+        Credential storage c = credentials[id];
+        require(c.id != 0, "not found");
+        require(
             msg.sender == c.issuer || msg.sender == owner,
             "not allowed"
         );
-        require(!c.revoked, "already revoked");   // Evita l'idempotenza costosa
-        c.revoked = true;                           // Aggiorna il flag (SSTORE → costo gas)
-        emit CredentialRevoked(id, msg.sender);     // Log dell'azione (auditing)
+        require(!c.revoked, "already revoked");
+        c.revoked = true;                           // Update flag
+        emit CredentialRevoked(id, msg.sender);
     }
 
     /**
-     * @notice Verifica se esiste almeno una credenziale valida per (subject, schemaId).
-     * @dev Scansiona l'array indicizzato a ritroso (più recente prima) e ritorna alla prima valida.
+     * @notice Checks if at least one valid credential exists for (subject, schemaId).
+     * @dev Scans array backwards (most recent first) and returns first valid one.
      */
     function hasValidCredential(address subject, bytes32 schemaId)
         external
-        view                                         // Solo lettura: non consuma gas se chiamata via eth_call
+        view
         returns (bool ok, uint256 validId)
     {
-        uint256[] storage arr = _bySubjectSchema[subject][schemaId]; // Recupera lista ID
-        for (uint256 i = arr.length; i > 0; i--) {  // Itera a ritroso (ultimo emesso per primo)
-            Credential storage c = credentials[arr[i-1]]; // Carica la credenziale da storage
-            if (                                     // Condizione di validità: non revocata e non scaduta
+        uint256[] storage arr = _bySubjectSchema[subject][schemaId];
+        for (uint256 i = arr.length; i > 0; i--) {
+            Credential storage c = credentials[arr[i-1]];
+            if (
                 !c.revoked &&
                 (c.expiresAt == 0 || c.expiresAt > block.timestamp)
             ) {
-                return (true, c.id);                 // Prima valida → ritorna
+                return (true, c.id);
             }
         }
-        return (false, 0);                           // Nessuna valida trovata
+        return (false, 0);
     }
 
-    /**
-     * @notice Verifica puntuale di validità per id.
-     */
     function isValid(uint256 id) external view returns (bool) {
-        Credential storage c = credentials[id];      // Carica
-        if (c.id == 0 || c.revoked) return false;   // Inesistente o revocata
-        if (c.expiresAt != 0 && c.expiresAt <= block.timestamp) return false; // Scaduta
-        return true;                                 // Altrimenti valida
+        Credential storage c = credentials[id];
+        if (c.id == 0 || c.revoked) return false;
+        if (c.expiresAt != 0 && c.expiresAt <= block.timestamp) return false;
+        return true;
     }
 
-    /**
-     * @notice Restituisce tutti gli ID di credenziali per (subject, schemaId).
-     * @dev Utile per UI/off-chain indexing.
-     */
     function listBySubjectSchema(address subject, bytes32 schemaId)
         external
         view
         returns (uint256[] memory ids)
     {
-        return _bySubjectSchema[subject][schemaId];  // Copia in memoria e ritorna
+        return _bySubjectSchema[subject][schemaId];
     }
 }
 ```
@@ -224,34 +217,34 @@ contract CredentialRegistry is IssuerManager {
 ## contracts/VerifierAdapter.sol
 
 ```solidity
-// SPDX-License-Identifier: MIT                     // Licenza
-pragma solidity ^0.8.28;                            // Versione compiler
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
 
-import "./CredentialRegistry.sol";                 // Usa il registro per verificare credenziali
+import "./CredentialRegistry.sol";
 
 /**
  * @title VerifierAdapter
- * @notice Orchestratore di richieste di autenticazione tra Verifier e Holder.
- * @dev Mantiene uno stato minimo della request e interroga il registro per validità.
+ * @notice Orchestrates authentication requests between Verifier and Holder.
+ * @dev Keeps minimal request state and queries registry for validity.
  */
 contract VerifierAdapter {
-    enum State { Open, Approved, Denied }           // Stati possibili di una richiesta
+    enum State { Open, Approved, Denied }
 
-    struct AuthRequest {                            // Struttura salvata on-chain per ogni richiesta
-        uint256 id;                                 // Identificatore della request
-        address verifier;                           // Chi ha aperto la richiesta (service provider)
-        bytes32 schemaId;                           // Quale tipo di credenziale è richiesta
-        address subject;                            // Holder atteso (0 se non vincolato)
-        uint64 deadline;                            // Scadenza: non accetta risposte oltre questo timestamp
-        State state;                                // Stato corrente della richiesta
+    struct AuthRequest {
+        uint256 id;
+        address verifier;
+        bytes32 schemaId;
+        address subject;
+        uint64 deadline;
+        State state;
     }
 
-    uint256 public nextRequestId = 1;               // Contatore incrementale per le richieste
-    mapping(uint256 => AuthRequest) public requests;// Mappa id → request (getter auto per singoli campi)
+    uint256 public nextRequestId = 1;
+    mapping(uint256 => AuthRequest) public requests;
 
-    CredentialRegistry public immutable registry;   // Riferimento al registro (immutabile dopo il deploy)
+    CredentialRegistry public immutable registry;
 
-    event RequestOpened(                            // Evento per tracciamento richieste
+    event RequestOpened(
         uint256 indexed id,
         address indexed verifier,
         bytes32 indexed schemaId,
@@ -259,34 +252,28 @@ contract VerifierAdapter {
         uint64 deadline
     );
 
-    event AuthApproved(uint256 indexed id, address indexed subject, uint256 credentialId); // Evento su approvazione
-    event AuthDenied(uint256 indexed id, address indexed by); // Evento su diniego esplicito
+    event AuthApproved(uint256 indexed id, address indexed subject, uint256 credentialId);
+    event AuthDenied(uint256 indexed id, address indexed by);
 
-    constructor(CredentialRegistry _registry){      // Costruttore: collega il registro (indirizzo deployato prima)
-        registry = _registry;                       // Imposta lo storage immutabile (salvato nel bytecode / slot immutabili)
+    constructor(CredentialRegistry _registry){
+        registry = _registry;
     }
 
-    /**
-     * @notice Apre una richiesta di autenticazione.
-     * @param schemaId Hash dello schema richiesto.
-     * @param expectedSubject Holder atteso (0 per accettare chiunque si presenti con credenziale valida).
-     * @param ttlSeconds Tempo di vita della richiesta (evita replay tardivi).
-     */
     function openAuthRequest(bytes32 schemaId, address expectedSubject, uint64 ttlSeconds)
         external
         returns (uint256 id)
     {
-        require(ttlSeconds > 0, "ttl=0");          // Difensiva: una richiesta deve avere scadenza
-        id = nextRequestId++;                       // Assegna nuovo id
-        requests[id] = AuthRequest({                // Crea la struct in storage
+        require(ttlSeconds > 0, "ttl=0");
+        id = nextRequestId++;
+        requests[id] = AuthRequest({
             id: id,
-            verifier: msg.sender,                   // Il chiamante è il Verifier
-            schemaId: schemaId,                     // Tipo credenziale
-            subject: expectedSubject,               // Potrebbe essere 0x0 → soggetto libero
-            deadline: uint64(block.timestamp) + ttlSeconds, // Calcolo scadenza
-            state: State.Open                       // Stato iniziale
+            verifier: msg.sender,
+            schemaId: schemaId,
+            subject: expectedSubject,
+            deadline: uint64(block.timestamp) + ttlSeconds,
+            state: State.Open
         });
-        emit RequestOpened(                         // Log per UI/indexers
+        emit RequestOpened(
             id,
             msg.sender,
             schemaId,
@@ -295,40 +282,33 @@ contract VerifierAdapter {
         );
     }
 
-    /**
-     * @notice Il Holder risponde alla richiesta: se ha una credenziale valida → Approved.
-     * @dev Impone che la richiesta sia aperta, non scaduta, e (se fissato) che il subject corrisponda.
-     */
     function respond(uint256 requestId) external {
-        AuthRequest storage r = requests[requestId]; // Riferimento alla request in storage
-        require(r.id != 0, "req not found");       // Se non esiste → revert
-        require(r.state == State.Open, "req closed"); // Non si può rispondere a richiesta chiusa
-        require(block.timestamp <= r.deadline, "req expired"); // Non oltre la scadenza
+        AuthRequest storage r = requests[requestId];
+        require(r.id != 0, "req not found");
+        require(r.state == State.Open, "req closed");
+        require(block.timestamp <= r.deadline, "req expired");
 
-        if (r.subject != address(0)) {              // Se il Verifier ha vincolato un subject
-            require(msg.sender == r.subject, "wrong subject"); // Solo quel subject può rispondere
+        if (r.subject != address(0)) {
+            require(msg.sender == r.subject, "wrong subject");
         } else {
-            r.subject = msg.sender;                 // Altrimenti si fissa il subject al primo che risponde
+            r.subject = msg.sender;
         }
 
-        (bool ok, uint256 credId) =                 // Chiamata di sola lettura al registro (via STATICCALL sotto eth_call; CALL in tx)
+        (bool ok, uint256 credId) =
             registry.hasValidCredential(msg.sender, r.schemaId);
-        require(ok, "no valid credential");        // Se nessuna credenziale valida → revert
+        require(ok, "no valid credential");
 
-        r.state = State.Approved;                   // Aggiorna stato a Approved
-        emit AuthApproved(requestId, msg.sender, credId); // Log con l'id della credenziale usata
+        r.state = State.Approved;
+        emit AuthApproved(requestId, msg.sender, credId);
     }
 
-    /**
-     * @notice Il Verifier può negare manualmente la richiesta (p.es. policy esterne).
-     */
     function deny(uint256 requestId) external {
-        AuthRequest storage r = requests[requestId]; // Carica
-        require(r.id != 0, "req not found");       // Validità id
-        require(msg.sender == r.verifier, "not verifier"); // Solo chi l'ha aperta può negare
-        require(r.state == State.Open, "already closed");  // Evita doppie chiusure
-        r.state = State.Denied;                     // Aggiorna stato
-        emit AuthDenied(requestId, msg.sender);     // Logga l'azione
+        AuthRequest storage r = requests[requestId];
+        require(r.id != 0, "req not found");
+        require(msg.sender == r.verifier, "not verifier");
+        require(r.state == State.Open, "already closed");
+        r.state = State.Denied;
+        emit AuthDenied(requestId, msg.sender);
     }
 }
 ```
@@ -338,145 +318,146 @@ contract VerifierAdapter {
 ## ignition/modules/AuthDemo.ts
 
 ```ts
-// Modulo Ignition per deployment+seed di un flusso demo end-to-end
-import { buildModule } from "@nomicfoundation/hardhat-ignition/modules"; // API per definire moduli di deploy dichiarativi
-import { keccak256, toBytes } from "viem";                                 // Utility hash/schema id compatibili con viem/solidity
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
+import { keccak256, toBytes } from "viem";
 
-export default buildModule("AuthDemo", (m) => {          // Nome del modulo (namespace negli artifact di Ignition)
-  const deployer = m.getAccount(0);                       // Account 0 → owner/admin
-  const issuer   = m.getAccount(1);                       // Account 1 → Issuer whitelisted
-  const holder   = m.getAccount(2);                       // Account 2 → Holder
-  const verifier = m.getAccount(3);                       // Account 3 → Verifier (service provider)
+export default buildModule("AuthDemo", (m) => {
+  const deployer = m.getAccount(0);
+  const issuer   = m.getAccount(1);
+  const holder   = m.getAccount(2);
+  const verifier = m.getAccount(3);
 
-  const registry = m.contract("CredentialRegistry", [], { from: deployer }); // Deploy del registro con owner = deployer
-  const adapter  = m.contract("VerifierAdapter", [registry], { from: deployer }); // Deploy adapter puntando al registro
+  const registry = m.contract("CredentialRegistry", [], { from: deployer });
+  const adapter  = m.contract("VerifierAdapter", [registry], { from: deployer });
 
-  m.call(registry, "setIssuer", [issuer, true], { from: deployer }); // Owner abilita l'issuer (SSTORE + evento)
+  m.call(registry, "setIssuer", [issuer, true], { from: deployer });
 
-  const schemaId = keccak256(toBytes("EMAIL_VERIFIED_V1"));           // Calcolo schemaId off-chain compatibile (bytes32)
-  m.call(registry, "issueCredential", [holder, schemaId, 0], { from: issuer }); // Issuer rilascia credenziale senza scadenza
+  const schemaId = keccak256(toBytes("EMAIL_VERIFIED_V1"));
+  m.call(registry, "issueCredential", [holder, schemaId, 0], { from: issuer });
 
-  const opened = m.call(                                              // Verifier apre una richiesta di auth (10 min TTL)
+  const opened = m.call(
     adapter,
     "openAuthRequest",
     [schemaId, holder, 600],
     { from: verifier }
   );
 
-  m.call(                                                             // Holder risponde alla request appena aperta
+  m.call(
     adapter,
     "respond",
-    [m.readEventArgument(opened, "RequestOpened", "id")],            // Estrae l'id dall'evento di apertura
+    [m.readEventArgument(opened, "RequestOpened", "id")],
     { from: holder }
   );
 
-  return { registry, adapter };                                       // Esporta riferimenti per altri moduli o per report
+  return { registry, adapter };
 });
 ```
 
 ---
 
-## package.json – scripts (annotati)
-
-> **Nota**: JSON non supporta commenti; qui sotto li mostriamo a scopo didattico. Nel tuo `package.json` inserisci solo le righe senza `// ...`.
+## package.json – scripts
 
 ```jsonc
 {
   "scripts": {
-    "compile": "hardhat compile",                      // Compila i contratti e genera artifact/ABIs
-    "test": "vitest run",                              // (Opzionale finché non aggiungi i test) esegue i test TypeScript
-    "deploy:demo": "hardhat ignition deploy ignition/modules/AuthDemo.ts --network hardhatMainnet" // Esegue il modulo Ignition
+    "compile": "hardhat compile",
+    "test": "vitest run",
+    "deploy:demo": "hardhat ignition deploy ignition/modules/AuthDemo.ts --network hardhatMainnet"
   }
 }
 ```
 
-Se non usi una rete chiamata `hardhatMainnet`, sostituisci con `--network hardhat` (rete in‑process) o `--network localhost` se hai un nodo locale.
-
 ---
 
-## Cosa accade nella EVM e sulla blockchain (per funzione)
+## What happens in the EVM and on the blockchain (per function)
 
 ### 1) `setIssuer(issuer, true)`
-- **Transazione** firmata dall'**owner** → arriva al mempool, viene inclusa in un blocco.
-- La EVM esegue `onlyOwner` → *require* su `msg.sender`. Se fallisce, REVERT (nessuno stato cambia, gas speso).
-- `isIssuer[issuer] = true` scrive in storage (SSTORE: costo gas). Emesso `IssuerSet(issuer, true)` nel receipt (log indicizzato).
-- **On‑chain**: da ora quell'indirizzo è whitelisted.
+- **Transaction** signed by the **owner** → goes to mempool, included in a block.
+- The EVM executes `onlyOwner` → *require* on `msg.sender`. If it fails, REVERT (no state change, gas consumed).
+- `isIssuer[issuer] = true` writes to storage (SSTORE: gas cost). `IssuerSet(issuer, true)` emitted in the receipt (indexed log).
+- **On-chain**: from now on, that address is whitelisted.
 
 ### 2) `issueCredential(holder, schemaId, expiresAt)`
-- **Transazione** firmata dall'**issuer** whitelisted.
-- EVM verifica `onlyIssuer` → ok. `nextId++` legge/scrive storage.
-- Scrive la struct `Credential` nello storage mapping `credentials` e aggiorna l'indice `_bySubjectSchema` (push su array dinamico).
-- Emesso `CredentialIssued` con dati di auditing.
-- **On‑chain**: lo stato persiste; più tardi chiunque può **leggere** via `eth_call` (gratis) la validità.
+- **Transaction** signed by the whitelisted **issuer**.
+- EVM checks `onlyIssuer` → ok. `nextId++` reads/writes storage.
+- Writes the `Credential` struct into the `credentials` mapping and updates `_bySubjectSchema` index (push into dynamic array).
+- `CredentialIssued` emitted with auditing data.
+- **On-chain**: state persists; later anyone can **read** validity via `eth_call` (free).
 
 ### 3) `openAuthRequest(schemaId, subject, ttl)`
-- **Transazione** dal **verifier**. EVM crea una struct `AuthRequest` e la memorizza in mapping `requests`.
-- Calcola `deadline` = `block.timestamp + ttl`.
-- Emesso `RequestOpened`.
-- **On‑chain**: la richiesta è nello stato `Open` fino a `deadline` o chiusura.
+- **Transaction** by the **verifier**. EVM creates an `AuthRequest` struct and stores it in the `requests` mapping.
+- Computes `deadline` = `block.timestamp + ttl`.
+- `RequestOpened` emitted.
+- **On-chain**: request remains in `Open` state until `deadline` or closure.
 
 ### 4) `respond(requestId)`
-- **Transazione** dal **holder**.
-- EVM carica `AuthRequest` da storage; verifica `Open` e `deadline`.
-- Se `subject` era 0, lo imposta a `msg.sender`; altrimenti richiede che `msg.sender == subject`.
-- Esegue **chiamata esterna** a `registry.hasValidCredential(holder, schemaId)`:
-  - Se la chiamata interna fallisce (nessuna credenziale valida), *require* fallisce → REVERT dell'intera `respond`.
-  - Se ok, `state = Approved` e viene emesso `AuthApproved(id, holder, credId)`.
-- **On‑chain**: la request è ora chiusa come `Approved`. Le UI possono filtrare via eventi o leggere lo stato.
+- **Transaction** by the **holder**.
+- EVM loads `AuthRequest` from storage; checks `Open` and `deadline`.
+- If `subject` was 0, it sets it to `msg.sender`; otherwise it requires `msg.sender == subject`.
+- Executes **external call** to `registry.hasValidCredential(holder, schemaId)`:
+  - If the internal call fails (no valid credential), *require* fails → REVERT of the whole `respond`.
+  - If ok, `state = Approved` and `AuthApproved(id, holder, credId)` is emitted.
+- **On-chain**: request is now closed as `Approved`. UIs can filter via events or read state.
 
-### 5) `revokeCredential(id)` (issuer o owner)
-- **Transazione** da issuer originale o owner.
-- EVM imposta `revoked = true`; emette evento.
-- **Effetto**: future `hasValidCredential` non considereranno più questa credenziale valida.
+### 5) `revokeCredential(id)` (issuer or owner)
+- **Transaction** by original issuer or owner.
+- EVM sets `revoked = true`; emits event.
+- **Effect**: future `hasValidCredential` calls will no longer consider this credential valid.
 
-**Eventi e log**: gli `event` non modificano lo stato, ma finiscono nel receipt della transazione e nei Bloom filter del blocco → indicizzabili da indexer/SDK.
+**Events and logs**: `event`s do not change state, but end up in the transaction receipt and block Bloom filters → indexable by indexers/SDKs.
 
-**Gas e storage**: ogni `SSTORE` costa; aggiornare da 0→non‑zero è più caro di non‑zero→non‑zero; azzerare può ricevere refund (dipende da opcode e EIP attive su chain).
+**Gas and storage**: every `SSTORE` costs gas; updating from 0→non-zero is more expensive than non-zero→non-zero; clearing may refund gas (depends on opcodes and active EIPs on chain).
 
 ---
 
-## Cheatsheet operativo
+## Operational cheatsheet
 
-### Requisiti minimi
-- Hardhat + Ignition + Viem (come da tuo setup corrente)
-- Node.js recente, `npm`
+### Minimum requirements
+- Hardhat + Ignition + Viem (as in your current setup)
+- Recent Node.js, `npm`
 
-### Struttura cartelle (se non già creata)
+### Folder structure (if not already created)
 ```bash
 mkdir -p contracts ignition/modules test
 ```
 
-### Aggiungi i file
-- `contracts/IssuerManager.sol` (codice sopra)
-- `contracts/CredentialRegistry.sol` (codice sopra)
-- `contracts/VerifierAdapter.sol` (codice sopra)
-- `ignition/modules/AuthDemo.ts` (codice sopra)
-- Aggiorna `package.json` con gli **scripts** mostrati
+### Add files
+- `contracts/IssuerManager.sol` (code above)
+- `contracts/CredentialRegistry.sol` (code above)
+- `contracts/VerifierAdapter.sol` (code above)
+- `ignition/modules/AuthDemo.ts` (code above)
+- Update `package.json` with the **scripts** shown
 
-### Comandi principali
+### Main commands
 ```bash
-npm run compile                      # Compila i contratti
-npm run deploy:demo                  # Deploy + seed flusso demo via Ignition (rete a scelta)
+npm run compile                      # Compile contracts
+npm run deploy:demo                  # Deploy + seed demo flow via Ignition (choose network)
 ```
-> Se la tua rete si chiama diversamente, usa `--network hardhat` o `--network localhost`.
+> If your network is named differently, use `--network hardhat` or `--network localhost`.
 
-### Flusso end‑to‑end (demo)
-1) **Deploy** `CredentialRegistry` e `VerifierAdapter` (Ignition lo fa in ordine corretto).
-2) **setIssuer**: l'owner abilita l'Issuer.
-3) **issueCredential**: l'Issuer emette una credenziale `EMAIL_VERIFIED_V1` per l'Holder.
-4) **openAuthRequest**: il Verifier apre una richiesta con TTL (es. 600s) e subject atteso.
-5) **respond**: l'Holder risponde; l'adapter interroga il registro; se valida → `Approved` + evento.
-6) (Opzionale) **revokeCredential**: l'Issuer/owner può revocare; da quel momento la verifica fallirà.
+### End-to-end flow (demo)
 
-### Note pratiche
-- Gli `view` come `hasValidCredential` non consumano gas se chiamati off‑chain con `eth_call`; consumano gas se invocati internamente durante una transazione.
-- Gli ID vengono incrementati linearmente: semplici da tracciare in UI/log.
-- `schemaId` è un `bytes32`: generato con `keccak256("NOME_SCHEMA")` per coerenza tra TS e Solidity.
+1. **Deploy** `CredentialRegistry` and `VerifierAdapter` (Ignition does it in correct order).
+2. **setIssuer**: owner enables Issuer.
+3. **issueCredential**: Issuer issues `EMAIL_VERIFIED_V1` credential for Holder.
+4. **openAuthRequest**: Verifier opens a request with TTL (e.g. 600s) and expected subject.
+5. **respond**: Holder responds; adapter queries registry; if valid → `Approved` + event.
+6. (Optional) **revokeCredential**: Issuer/owner can revoke; from then, verification will fail.
 
 ---
 
-## Estensioni naturali
-- **ZK Proofs**: sostituire la chiamata diretta `hasValidCredential` con una verifica di prova ZK off‑chain + verifica on‑chain (es. tramite verifier contract) per preservare privacy su `subject`/attributi.
-- **ML Anomaly Detection**: log degli eventi + features di comportamento (frequenza richieste, esiti, geolocalizzazione lato applicativo) alimentano un modello out‑of‑band che decide se aprire/negare.
+### Practical notes
+
+- `view` functions like `hasValidCredential` do not consume gas if called off-chain with `eth_call`; they consume gas if invoked internally during a transaction.
+- IDs increment linearly: easy to track in UI/logs.
+- `schemaId` is a `bytes32`: generated with `keccak256("SCHEMA_NAME")` for consistency between TS and Solidity.
+
+---
+
+### Natural extensions (for later)
+
+- **ZK Proofs**: replace direct `hasValidCredential` call with off-chain ZK proof + on-chain verification (e.g., via verifier contract) to preserve privacy on `subject`/attributes.
+- **ML Anomaly Detection**: event logs + behavior features (frequency of requests, outcomes, geolocation at application level) feed an out-of-band model deciding whether to allow/deny.
+
 
 ---
