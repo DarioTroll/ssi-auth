@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { Test } from "lib/forge-std/src/Test.sol";
-import { IssuerManager } from "../contracts/IssuerManager.sol";
+import { Test } from "forge-std/src/Test.sol";
+import { IssuerManager } from "../../contracts/IssuerManager.sol";
 
 contract IssuerManagerTest is Test {
     IssuerManager issuerManager;

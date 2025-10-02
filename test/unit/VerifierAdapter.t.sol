@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { Test } from "lib/forge-std/src/Test.sol";
-import { VerifierAdapter } from "../contracts/VerifierAdapter.sol";
-import { CredentialRegistry } from "../contracts/CredentialRegistry.sol";
+import { Test } from "forge-std/src/Test.sol";
+import { VerifierAdapter } from "../../contracts/VerifierAdapter.sol";
+import { CredentialRegistry } from "../../contracts/CredentialRegistry.sol";
 
 contract VerifierAdapterTest is Test {
     CredentialRegistry registry;
