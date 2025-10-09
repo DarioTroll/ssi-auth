@@ -1,0 +1,15 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "id": "@id",
+    "type": "@type",
+    "DegreeCredential": "https://localhost:3000/vocab#DegreeCredential",
+    "degree": "https://localhost:3000/vocab#degree",
+    "degreeType": "https://localhost:3000/vocab#degreeType",
+    "fieldOfStudy": "https://localhost:3000/vocab#fieldOfStudy",
+    "university": "https://localhost:3000/vocab#university",
+    "graduationDate": "https://localhost:3000/vocab#graduationDate",
+    "grade": "https://localhost:3000/vocab#grade",
+    "honors": "https://localhost:3000/vocab#honors"
+  }
+}

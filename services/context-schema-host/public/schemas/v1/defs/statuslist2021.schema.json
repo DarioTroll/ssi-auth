@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://localhost:3000/schemas/v1/defs/statuslist2021.schema.json",
+  "title": "StatusList2021 Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "id": { "$ref": "https://localhost:3000/schemas/v1/defs/common.schema.json#/$defs/URI" },
+    "type": { "const": "StatusList2021Entry" },
+    "statusPurpose": { "enum": ["revocation", "suspension"] },
+    "statusListIndex": { "type": "string", "pattern": "^[0-9]+$" },
+    "statusListCredential": { "$ref": "https://localhost:3000/schemas/v1/defs/common.schema.json#/$defs/URI" }
+  },
+  "required": ["id", "type", "statusPurpose", "statusListIndex", "statusListCredential"]
+}

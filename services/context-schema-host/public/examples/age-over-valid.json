@@ -1,0 +1,6 @@
+{
+  "$schemaRef": "http://localhost:3000/schemas/v1/age-over.schema.json",
+  "@context": "http://localhost:3000/contexts/v1/age-over.jsonld",
+  "type": ["VerifiableCredential", "AgeOverCredential"],
+  "credentialSubject": { "ageThreshold": 18 }
+}

@@ -1,0 +1,10 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "id": "@id",
+    "type": "@type",
+    "NationalityCredential": "https://localhost:3000/vocab#NationalityCredential",
+    "countryCode": "https://localhost:3000/vocab#countryCode",
+    "countryName": "https://localhost:3000/vocab#countryName"
+  }
+}

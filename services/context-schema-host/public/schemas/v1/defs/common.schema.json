@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://localhost:3000/schemas/v1/defs/common.schema.json",
+  "title": "Common Definitions",
+  "type": "object",
+  "$defs": {
+    "URI": { "type": "string", "minLength": 1 },
+    "DID": { "type": "string", "pattern": "^did:[a-z0-9]+:[A-Za-z0-9.:\\-_]+$" },
+    "ISODateTime": { "type": "string", "format": "date-time" },
+    "Context": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "minItems": 1, "items": { "type": ["string","object"] } }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,25 @@
+{
+  "$schemaRef": "https://localhost:3000/schemas/v1/vc-proof-jwt.schema.json",
+  "$vcSchemaRef": "https://localhost:3000/schemas/v1/vc-age-over.schema.json",
+  "iss": "did:example:issuer123",
+  "sub": "did:example:holder789",
+  "iat": 1765130400,
+  "exp": 1796666400,
+  "vc": {
+    "@context": [
+      "https://www.w3.org/2018/credentials/v1",
+      "https://localhost:3000/contexts/v1/age-over.jsonld"
+    ],
+    "type": ["VerifiableCredential", "AgeOverCredential"],
+    "issuer": "did:example:issuer123",
+    "issuanceDate": "2025-10-07T10:00:00Z",
+    "credentialSubject": { "id": "did:example:holder789", "ageThreshold": 18 },
+    "credentialStatus": {
+      "id": "https://localhost:3000/statuslists/v1/statuslist.json#12345",
+      "type": "StatusList2021Entry",
+      "statusPurpose": "revocation",
+      "statusListIndex": "12345",
+      "statusListCredential": "https://localhost:3000/statuslists/v1/statuslist.json"
+    }
+  }
+}

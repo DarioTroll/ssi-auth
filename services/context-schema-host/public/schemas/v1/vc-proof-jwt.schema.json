@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://localhost:3000/schemas/v1/vc-proof-jwt.schema.json",
+  "title": "VC-JWT Payload",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "iss": { "$ref": "https://localhost:3000/schemas/v1/defs/common.schema.json#/$defs/DID" },
+    "sub": { "$ref": "https://localhost:3000/schemas/v1/defs/common.schema.json#/$defs/DID" },
+    "nbf": { "type": "integer", "minimum": 0 },
+    "iat": { "type": "integer", "minimum": 0 },
+    "exp": { "type": "integer", "minimum": 0 },
+    "vc": { "type": "object" }
+  },
+  "required": ["iss", "sub", "iat", "vc"]
+}

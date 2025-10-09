@@ -1,0 +1,36 @@
+{
+  "$schemaRef": "https://localhost:3000/schemas/v1/vc-degree.schema.json",
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://localhost:3000/contexts/v1/degree.jsonld"
+  ],
+  "id": "urn:uuid:7d7ad8f2-2a4a-4cda-9a2b-2a4d7bf2ac11",
+  "type": ["VerifiableCredential", "DegreeCredential"],
+  "issuer": { "id": "did:example:unisa" },
+  "issuanceDate": "2025-10-07T10:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:dario",
+    "degree": {
+      "degreeType": "Laurea Magistrale",
+      "fieldOfStudy": "Psicologia",
+      "university": "Università degli Studi di Salerno",
+      "graduationDate": "2023-07-15",
+      "grade": "110/110 e lode",
+      "honors": true
+    }
+  },
+  "credentialStatus": {
+    "id": "https://localhost:3000/statuslists/v1/statuslist.json#128",
+    "type": "StatusList2021Entry",
+    "statusPurpose": "revocation",
+    "statusListIndex": "128",
+    "statusListCredential": "https://localhost:3000/statuslists/v1/statuslist.json"
+  },
+  "proof": {
+    "type": "EcdsaSecp256k1Signature2019",
+    "created": "2025-10-07T10:02:00Z",
+    "proofPurpose": "assertionMethod",
+    "verificationMethod": "did:example:unisa#keys-1",
+    "jws": "eyJhbGciOiJFUzI1NiJ9..sig..."
+  }
+}

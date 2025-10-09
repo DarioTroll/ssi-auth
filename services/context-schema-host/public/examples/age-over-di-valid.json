@@ -1,0 +1,30 @@
+{
+  "$schemaRef": "https://localhost:3000/schemas/v1/vc-age-over.schema.json",
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://localhost:3000/contexts/v1/age-over.jsonld"
+  ],
+  "id": "urn:uuid:8fca8be3-6c5d-45b1-b5c7-f6d07378485c",
+  "type": ["VerifiableCredential", "AgeOverCredential"],
+  "issuer": { "id": "did:example:issuer123" },
+  "issuanceDate": "2025-10-07T10:00:00Z",
+  "expirationDate": "2026-10-07T10:00:00Z",
+  "credentialSubject": {
+    "id": "did:example:holder789",
+    "ageThreshold": 18
+  },
+  "credentialStatus": {
+    "id": "https://localhost:3000/statuslists/v1/statuslist.json#12345",
+    "type": "StatusList2021Entry",
+    "statusPurpose": "revocation",
+    "statusListIndex": "12345",
+    "statusListCredential": "https://localhost:3000/statuslists/v1/statuslist.json"
+  },
+  "proof": {
+    "type": "EcdsaSecp256k1Signature2019",
+    "created": "2025-10-07T10:01:00Z",
+    "proofPurpose": "assertionMethod",
+    "verificationMethod": "did:example:issuer123#keys-1",
+    "jws": "eyJhbGciOiJFUzI1NiJ9..KhI3v..."
+  }
+}
