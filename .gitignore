@@ -1,3 +1,11 @@
 services/context-schema-host/node_modules/
+
 services/status-list-publisher/node_modules/
 services/status-list-publisher/.env
+
+services/status-list-anchor/node_modules/
+services/status-list-anchor/.env
+services/status-list-anchor/cache/
+services/status-list-anchor/artifacts/
+services/status-list-anchor/typechain-types/
+

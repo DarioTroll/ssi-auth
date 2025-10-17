@@ -32,4 +32,8 @@ export const cfg = {
   signingJwk: loadSigningJwk(),
   listSize: parseInt(process.env.LIST_SIZE || '16384', 10),
   listId: process.env.LIST_ID || 'main',
+  anchorContract: process.env.ANCHOR_CONTRACT,      // 0x...
+  rpcUrl: process.env.RPC_URL,                      // es. http://127.0.0.1:8545 o Sepolia
+  anchorPrivateKey: process.env.ANCHOR_PRIVATE_KEY, // chiave con ANCHOR_ROLE
+  autoAnchor: (process.env.AUTO_ANCHOR ?? "true") === "true",
 };
